@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>CORS + credentials demo (harmless)</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:800px; margin:1.5rem; }
+    input, button { padding: .4rem; font-size: 1rem; }
+    pre { background:#f4f4f4; padding:1rem; overflow:auto; }
+    label { display:block; margin-top: .8rem; }
+  </style>
+</head>
+<body>
+  <h2>Safe CORS + credentials demo</h2>
+  <p>This page shows the mechanism an attacker could use. It <strong>does not</strong> target Netflix — it queries a public echo service (httpbin.org) so you can demonstrate behavior to a security team safely.</p>
+
+  <label>Target URL (demo uses httpbin by default)
+    <input id="target" style="width:100%" value="https://httpbin.org/get" />
+  </label>
+
+  <label>Fetch method
+    <select id="method">
+      <option>GET</option>
+      <option>POST</option>
+    </select>
+  </label>
+
+  <label>
+    Include credentials? <input type="checkbox" id="cred" checked />
+    <small>(simulates attacker page requesting cookies; browsers only send cookies to same-site or when server allows CORS + credentials)</small>
+  </label>
+
+  <button id="run">Run demo fetch</button>
+
+  <h3>Result</h3>
+  <pre id="out">No request yet.</pre>
+
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const url = document.getElementById('target').value.trim();
+      const method = document.getElementById('method').value;
+      const cred = document.getElementById('cred').checked;
+      document.getElementById('out').textContent = 'Sending request...';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          credentials: cred ? 'include' : 'omit',
+          headers: { 'Accept': 'application/json' }
+        });
+        const text = await res.text();
+        document.getElementById('out').textContent = `Status: ${res.status} ${res.statusText}\n\nResponse headers:\n` +
+          [...res.headers].map(h=>h[0]+': '+h[1]).join('\n') + '\n\nBody:\n' + text;
+      } catch (e) {
+        document.getElementById('out').textContent = 'Request failed: ' + e;
+      }
+    });
+  </script>
+</body>
+</html>
