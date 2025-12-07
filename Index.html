@@ -1,60 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>CORS + credentials demo (harmless)</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width:800px; margin:1.5rem; }
-    input, button { padding: .4rem; font-size: 1rem; }
-    pre { background:#f4f4f4; padding:1rem; overflow:auto; }
-    label { display:block; margin-top: .8rem; }
-  </style>
+    <title>Netflix CORS Bug Bounty Demo</title>
+    <style>
+        body { font-family: Arial; max-width: 900px; margin: 50px auto; padding: 20px; }
+        .endpoint { background: #e3f2fd; border-left: 5px solid #2196f3; padding: 15px; margin: 15px 0; }
+        button { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #d32f2f; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 14px; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        #results { min-height: 200px; border: 1px solid #ddd; padding: 20px; margin-top: 20px; }
+    </style>
 </head>
 <body>
-  <h2>Safe CORS + credentials demo</h2>
-  <p>This page shows the mechanism an attacker could use. It <strong>does not</strong> target Netflix — it queries a public echo service (httpbin.org) so you can demonstrate behavior to a security team safely.</p>
+    <h1>🚨 Netflix CORS Misconfiguration Demo</h1>
+    <p>Test CORS on <code>secure.netflix.com</code> endpoints discovered yesterday</p>
 
-  <label>Target URL (demo uses httpbin by default)
-    <input id="target" style="width:100%" value="https://httpbin.org/get" />
-  </label>
+    <div class="endpoint">
+        <h3>1. Legacy Device UI Endpoints (2014)</h3>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/landing.html')">Test landing.html</button>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/index.html')">Test index.html</button>
+    </div>
 
-  <label>Fetch method
-    <select id="method">
-      <option>GET</option>
-      <option>POST</option>
-    </select>
-  </label>
+    <div class="endpoint">
+        <h3>2. Internal JS Files</h3>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/Class.js')">Class.js</button>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/util.js')">util.js</button>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/redirector.js?v=2')">redirector.js</button>
+    </div>
 
-  <label>
-    Include credentials? <input type="checkbox" id="cred" checked />
-    <small>(simulates attacker page requesting cookies; browsers only send cookies to same-site or when server allows CORS + credentials)</small>
-  </label>
+    <div class="endpoint">
+        <h3>3. Parameter Testing</h3>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/index.html?action=play')">action=play</button>
+        <button onclick="testCORS('https://secure.netflix.com/us/deviceui/?fb_ref=test')">fb_ref</button>
+    </div>
 
-  <button id="run">Run demo fetch</button>
+    <div id="results">
+        <strong>Results will appear here...</strong>
+    </div>
 
-  <h3>Result</h3>
-  <pre id="out">No request yet.</pre>
-
-  <script>
-    document.getElementById('run').addEventListener('click', async () => {
-      const url = document.getElementById('target').value.trim();
-      const method = document.getElementById('method').value;
-      const cred = document.getElementById('cred').checked;
-      document.getElementById('out').textContent = 'Sending request...';
-
-      try {
-        const res = await fetch(url, {
-          method,
-          credentials: cred ? 'include' : 'omit',
-          headers: { 'Accept': 'application/json' }
-        });
-        const text = await res.text();
-        document.getElementById('out').textContent = `Status: ${res.status} ${res.statusText}\n\nResponse headers:\n` +
-          [...res.headers].map(h=>h[0]+': '+h[1]).join('\n') + '\n\nBody:\n' + text;
-      } catch (e) {
-        document.getElementById('out').textContent = 'Request failed: ' + e;
-      }
-    });
-  </script>
+    <script>
+        async function testCORS(url) {
+            const results = document.getElementById('results');
+            results.innerHTML += `<h4>Testing: ${url}</h4>`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    results.innerHTML += `<pre class="success">✅ CORS ALLOWED!\nStatus: ${response.status}\nSize: ${text.length} chars\nResponse: ${text.substring(0, 200)}...</pre>`;
+                } else {
+                    results.innerHTML += `<pre class="error">❌ CORS BLOCKED\nStatus: ${response.status} ${response.statusText}</pre>`;
+                }
+            } catch (error) {
+                results.innerHTML += `<pre class="error">🚨 CORS ERROR: ${error.message}</pre>`;
+            }
+            
+            results.scrollTop = results.scrollHeight;
+        }
+    </script>
 </body>
 </html>
